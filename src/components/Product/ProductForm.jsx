@@ -110,7 +110,7 @@ const ProductForm = ({
         Stock: parseInt(formData.Stock),
         PricePerUnit: parseFloat(formData.PricePerUnit),
         ...(formData.Type !== 'packet' && {
-          Units: parseInt(formData.Units),
+          Units: formData.Units ? [formData.Units] : [],
           MinimumOrder: parseInt(formData.MinimumOrder)
         })
       };
@@ -218,9 +218,7 @@ const ProductForm = ({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="packet">Packet</SelectItem>
-                <SelectItem value="kg">Kilogram</SelectItem>
-                <SelectItem value="liter">Liter</SelectItem>
-                <SelectItem value="piece">Piece</SelectItem>
+                <SelectItem value="non-packet">Non-Packet</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -255,12 +253,21 @@ const ProductForm = ({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="units">Units</Label>
-                <Input
-                  id="units"
-                  type="number"
+                <Select
                   value={formData.Units}
-                  onChange={(e) => handleInputChange('Units', e.target.value)}
-                />
+                  onValueChange={(value) => handleInputChange('Units', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select unit" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="kg">kg</SelectItem>
+                    <SelectItem value="g">g</SelectItem>
+                    <SelectItem value="L">L</SelectItem>
+                    <SelectItem value="mL">mL</SelectItem>
+                    <SelectItem value="dozen">dozen</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="minimumOrder">Minimum Order</Label>
