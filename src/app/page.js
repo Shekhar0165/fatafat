@@ -33,14 +33,14 @@ export default function Home() {
       if (res.data.success) {
         toast.success("Login successful")
 
-        // const accessToken = res.data.tokens.accessToken
-        // const refreshToken = res.data.tokens.refreshToken
+        const accessToken = res.data.tokens.accessToken
+        const refreshToken = res.data.tokens.refreshToken
 
         // Set accessToken cookie for 15 minutes (900 seconds)
-        // document.cookie = `accessToken=${accessToken}; path=/; max-age=86400; SameSite=None; Secure`;
+        document.cookie = `accessToken=${accessToken}; path=/; max-age=86400; SameSite=None `;
 
-        // // Set refreshToken cookie for 7 days (7 * 24 * 60 * 60 = 604800 seconds)
-        // document.cookie = `refreshToken=${refreshToken}; path=/; max-age=604800; SameSite=None; Secure`;
+        // Set refreshToken cookie for 7 days (7 * 24 * 60 * 60 = 604800 seconds)
+        document.cookie = `refreshToken=${refreshToken}; path=/; max-age=604800; SameSite=None `;
 
         // Redirect after setting cookies
         router.push('/dashboard')
