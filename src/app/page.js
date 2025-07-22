@@ -37,10 +37,10 @@ export default function Home() {
         const refreshToken = res.data.tokens.refreshToken
 
         // Set accessToken cookie for 15 minutes (900 seconds)
-        document.cookie = `accessToken=${accessToken}; path=/; max-age=86400; SameSite=Lax`;
+        document.cookie = `accessToken=${accessToken}; path=/; max-age=86400; SameSite=None; Secure`;
 
         // Set refreshToken cookie for 7 days (7 * 24 * 60 * 60 = 604800 seconds)
-        document.cookie = `refreshToken=${refreshToken}; path=/; max-age=604800; SameSite=Lax`;
+        document.cookie = `refreshToken=${refreshToken}; path=/; max-age=604800; SameSite=None; Secure`;
 
         // Redirect after setting cookies
         router.push('/dashboard')

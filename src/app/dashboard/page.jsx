@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Search, Plus, Tag, TrendingUp, Filter, Grid3X3, List, Users, ShoppingCart, Package, Truck } from 'lucide-react'
 
 const api = process.env.NEXT_PUBLIC_API_URL
+console.log('API URL:', api)
 
 export default function DashboardPage() {
   const [labels, setLabels] = useState([])
@@ -26,6 +27,7 @@ export default function DashboardPage() {
         const res = await axios.get(`${api}/labels`, {
           withCredentials: true,
         })
+        console.log('Fetched labels:', res.data)
         setLabels(res.data)
         setFilteredLabels(res.data)
       } catch (err) {
