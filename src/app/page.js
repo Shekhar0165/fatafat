@@ -36,11 +36,11 @@ export default function Home() {
         const accessToken = res.data.tokens.accessToken
         const refreshToken = res.data.tokens.refreshToken
 
-        // Set accessToken cookie for 15 minutes (900 seconds)
-        document.cookie = `accessToken=${accessToken}; path=/; max-age=86400; SameSite=Lax `;
+        // Set accessToken cookie for 1 day with domain sharing
+        document.cookie = `accessToken=${accessToken}; path=/; max-age=86400; SameSite=None; Secure; domain=.unifhub.fun`;
 
-        // Set refreshToken cookie for 7 days (7 * 24 * 60 * 60 = 604800 seconds)
-        document.cookie = `refreshToken=${refreshToken}; path=/; max-age=604800; SameSite=Lax`;
+        // Set refreshToken cookie for 7 days with domain sharing  
+        document.cookie = `refreshToken=${refreshToken}; path=/; max-age=604800; SameSite=None; Secure; domain=.unifhub.fun`;
 
         // Redirect after setting cookies
         router.push('/dashboard')
