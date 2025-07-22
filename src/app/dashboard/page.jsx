@@ -24,9 +24,12 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchLabels = async () => {
       try {
+        const accessToken = localStorage.getItem('accessToken');
         const res = await axios.get(`${api}/labels`, {
-          withCredentials: true,
-        })
+          headers: {
+            Authorization: accessToken ? `Bearer ${accessToken}` : undefined,
+          },
+        });
         console.log('Fetched labels:', res.data)
         setLabels(res.data)
         setFilteredLabels(res.data)

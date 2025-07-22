@@ -52,16 +52,18 @@ const DeliveryBoyManagement = () => {
     }, [])
 
 
+
     const fetchDeliveryBoys = async () => {
         try {
-            const response = await fetch(`http://localhost:8000/delivery-boy/get`, {
+            const accessToken = localStorage.getItem('accessToken');
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/delivery-boy/get`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': accessToken ? `Bearer ${accessToken}` : undefined,
                 },
                 credentials: 'include'
             });
-            
 
             if (!response.ok) {
                 throw new Error('Failed to fetch delivery boys');

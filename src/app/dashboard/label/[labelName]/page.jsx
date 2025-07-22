@@ -45,7 +45,11 @@ export default function CategoryPage({ params }) {
 
     const fetchCategories = async () => {
         try {
+            const accessToken = localStorage.getItem('accessToken');
             const res = await axios.get(`${api}/categroy?labelId=${labelId}`, {
+                headers: {
+                    Authorization: accessToken ? `Bearer ${accessToken}` : undefined,
+                },
                 withCredentials: true,
             })
 
@@ -77,7 +81,17 @@ export default function CategoryPage({ params }) {
 
         setAddingCategory(true)
         try {
-            const res = await axios.post(`${api}/categroy/add`, { name, labelId }, { withCredentials: true })
+            const accessToken = localStorage.getItem('accessToken');
+            const res = await axios.post(
+                `${api}/categroy/add`,
+                { name, labelId },
+                {
+                    headers: {
+                        Authorization: accessToken ? `Bearer ${accessToken}` : undefined,
+                    },
+                    withCredentials: true,
+                }
+            )
             if (res.data.success) {
                 toast.success('Category added successfully')
                 setName('')
@@ -94,7 +108,13 @@ export default function CategoryPage({ params }) {
         if (!confirm('Are you sure you want to delete this category?')) return
 
         try {
-            await axios.delete(`${api}/categroy/delete/${id}`, { withCredentials: true })
+            const accessToken = localStorage.getItem('accessToken');
+            await axios.delete(`${api}/categroy/delete/${id}`, {
+                headers: {
+                    Authorization: accessToken ? `Bearer ${accessToken}` : undefined,
+                },
+                withCredentials: true,
+            })
             toast.success('Category deleted successfully')
             fetchCategories()
         } catch (err) {
@@ -106,7 +126,17 @@ export default function CategoryPage({ params }) {
         if (!editName.trim()) return toast.error('Name required')
 
         try {
-            const res = await axios.put(`${api}/categroy/update/${editId}`, { name: editName }, { withCredentials: true })
+            const accessToken = localStorage.getItem('accessToken');
+            const res = await axios.put(
+                `${api}/categroy/update/${editId}`,
+                { name: editName },
+                {
+                    headers: {
+                        Authorization: accessToken ? `Bearer ${accessToken}` : undefined,
+                    },
+                    withCredentials: true,
+                }
+            )
             if (res.data.success) {
                 toast.success('Category updated successfully')
                 setEditId(null)

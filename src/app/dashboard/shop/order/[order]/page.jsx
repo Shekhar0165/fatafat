@@ -27,7 +27,14 @@ export default function OrderDetailsPage({ params }) {
     useEffect(() => {
         const fetchOrder = async () => {
             try {
-                const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/order/get/one/${orderId}`)
+                const accessToken = localStorage.getItem('accessToken');
+                const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/order/get/one/${orderId}`,
+                  {
+                    headers: {
+                      Authorization: accessToken ? `Bearer ${accessToken}` : undefined,
+                    },
+                  }
+                );
                 console.log(res)
                 if (res.data.success) {
                     setOrder(res.data.data)

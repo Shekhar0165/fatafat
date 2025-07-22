@@ -51,7 +51,11 @@ export default function ProductPage({ params }) {
 
   const fetchProducts = async () => {
     try {
+      const accessToken = localStorage.getItem('accessToken');
       const res = await axios.get(`${api}/product/${CategoryID}`, {
+        headers: {
+          Authorization: accessToken ? `Bearer ${accessToken}` : undefined,
+        },
         withCredentials: true,
       })
       if (res.data.success) {
@@ -151,16 +155,19 @@ export default function ProductPage({ params }) {
     setIsDeleting(true)
     console.log(selectedProduct)
     try {
+      const accessToken = localStorage.getItem('accessToken');
       // Delete product from database
       const response = await axios.delete(`${api}/product/delete/${selectedProduct._id}`, {
+        headers: {
+          Authorization: accessToken ? `Bearer ${accessToken}` : undefined,
+        },
         withCredentials: true,
       })
 
       if (response.data.success) {
         if (selectedProduct.Images) {
-        await deleteImageFromCloudinary(selectedProduct.Images
-        )
-      }
+          await deleteImageFromCloudinary(selectedProduct.Images)
+        }
         toast.success('Product deleted successfully')
         fetchProducts() // Refresh the list
         setIsDeleteDialogOpen(false)

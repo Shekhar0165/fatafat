@@ -54,14 +54,15 @@ export default function AdminDashboard() {
       params.append('status', status);
     }
 
+    // Get accessToken from localStorage
+    const accessToken = localStorage.getItem('accessToken');
+
     const response = await fetch(`${API_URL}/order/admin/get?${params.toString()}`, {
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`, // Assuming JWT token
+        'Authorization': accessToken ? `Bearer ${accessToken}` : undefined,
         'Content-Type': 'application/json',
       },
     });
-
-    console.log(response.data)
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -168,6 +169,7 @@ export default function AdminDashboard() {
       if (notification && notification.orderId) {
         setLiveOrders(prevLiveOrders => {
           const removedOrder = prevLiveOrders.find(order => order._id === notification.orderId);
+          console.log('Removed order:', removedOrder)
           if (removedOrder) {
             setCancelledOrders(prev => [
               { ...removedOrder, Status: 'cancel' },
