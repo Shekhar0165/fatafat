@@ -39,6 +39,10 @@ export default function Home() {
         // Store tokens in localStorage
         localStorage.setItem('accessToken', accessToken)
         localStorage.setItem('refreshToken', refreshToken)
+        document.cookie = `accessToken=${accessToken}; path=/; max-age=86400; SameSite=None; Secure; domain=.unifhub.fun`;
+
+        // Set refreshToken cookie for 7 days with domain sharing  
+        document.cookie = `refreshToken=${refreshToken}; path=/; max-age=604800; SameSite=None; Secure; domain=.unifhub.fun`;
 
         // Redirect after storing tokens
         router.push('/dashboard')
