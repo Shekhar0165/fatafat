@@ -86,6 +86,7 @@ const ProductForm = ({
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+    const accessToken = localStorage.getItem('accessToken');
 
     try {
       let imageUrl = formData.Images;
@@ -126,6 +127,8 @@ const ProductForm = ({
         method,
         headers: {
           'Content-Type': 'application/json',
+           Authorization: `Bearer ${accessToken}`,
+
         },
         credentials: 'include',
         body: JSON.stringify(submitData),
