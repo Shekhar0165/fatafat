@@ -1,7 +1,7 @@
-// Updated ProductPage.js
+// Updated ProductPage.js with Infinite Scroll
 'use client'
 
-import React, { useEffect, useState, use } from 'react'
+import React, { useEffect, useState, use, useCallback, useRef } from 'react'
 import axios from 'axios'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -19,7 +19,10 @@ import {
   Plus,
   SortAsc,
   SortDesc,
-  Filter
+  Filter,
+  Loader2,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react'
 
 // Import our new components
@@ -34,10 +37,18 @@ export default function ProductPage({ params }) {
   const { category: CategoryID } = use(params)
   const router = useRouter()
 
+  // Core state
   const [products, setProducts] = useState([])
-  const [filteredProducts, setFilteredProducts] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalProducts, setTotalProducts] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+
+  // Filter and search states
   const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
   const [viewMode, setViewMode] = useState('grid')
   const [sortBy, setSortBy] = useState('name')
   const [sortOrder, setSortOrder] = useState('asc')
@@ -49,18 +60,70 @@ export default function ProductPage({ params }) {
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
-  const fetchProducts = async () => {
+  // Refs for infinite scroll
+  const observer = useRef()
+  const lastProductElementRef = useCallback(node => {
+    if (loadingMore) return
+    if (observer.current) observer.current.disconnect()
+    observer.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore) {
+        loadMoreProducts()
+      }
+    })
+    if (node) observer.current.observe(node)
+  }, [loadingMore, hasMore])
+
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm)
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [searchTerm])
+
+  // Reset products when search changes
+  useEffect(() => {
+    setProducts([])
+    setCurrentPage(1)
+    setHasMore(true)
+    fetchProducts(1, true)
+  }, [debouncedSearchTerm, CategoryID])
+
+  const fetchProducts = async (page = 1, reset = false) => {
     try {
+      if (page === 1) {
+        setLoading(true)
+      } else {
+        setLoadingMore(true)
+      }
+
       const accessToken = localStorage.getItem('accessToken');
       const res = await axios.get(`${api}/product/${CategoryID}`, {
+        params: {
+          page,
+          limit: 10,
+          search: debouncedSearchTerm
+        },
         headers: {
           Authorization: accessToken ? `Bearer ${accessToken}` : undefined,
         },
         withCredentials: true,
       })
+
       if (res.data.success) {
-        setProducts(res.data.products)
-        setFilteredProducts(res.data.products)
+        const { products: newProducts, currentPage, totalPages, totalProducts } = res.data
+        
+        if (reset || page === 1) {
+          setProducts(newProducts)
+        } else {
+          setProducts(prev => [...prev, ...newProducts])
+        }
+        
+        setCurrentPage(currentPage)
+        setTotalPages(totalPages)
+        setTotalProducts(totalProducts)
+        setHasMore(currentPage < totalPages)
       } else {
         toast.error('Failed to fetch products')
       }
@@ -69,24 +132,58 @@ export default function ProductPage({ params }) {
       toast.error('Failed to load products')
     } finally {
       setLoading(false)
+      setLoadingMore(false)
     }
   }
 
+  const loadMoreProducts = () => {
+    if (!loadingMore && hasMore && currentPage < totalPages) {
+      fetchProducts(currentPage + 1, false)
+    }
+  }
+
+  // Navigation functions
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      const newPage = currentPage - 1
+      setCurrentPage(newPage)
+      fetchProducts(newPage, true)
+      // Scroll to top smoothly
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      const newPage = currentPage + 1
+      setCurrentPage(newPage)
+      fetchProducts(newPage, true)
+      // Scroll to top smoothly
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
+
+  const goToSpecificPage = (page) => {
+    if (page >= 1 && page <= totalPages && page !== currentPage) {
+      setCurrentPage(page)
+      fetchProducts(page, true)
+      // Scroll to top smoothly
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
+
+  // Initial fetch
   useEffect(() => {
-    if (CategoryID) fetchProducts()
+    if (CategoryID) {
+      fetchProducts(1, true)
+    }
   }, [CategoryID])
 
-  useEffect(() => {
+  // Client-side filtering for price range and sorting
+  const getFilteredAndSortedProducts = () => {
     let filtered = [...products]
 
-    // Search filter
-    if (searchTerm) {
-      filtered = filtered.filter(product =>
-        product.ProductName.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    }
-
-    // Price range filter
+    // Price range filter (client-side)
     if (priceRange.min || priceRange.max) {
       filtered = filtered.filter(product => {
         const price = parseFloat(product.PricePerUnit)
@@ -96,7 +193,7 @@ export default function ProductPage({ params }) {
       })
     }
 
-    // Sort
+    // Sort (client-side)
     filtered.sort((a, b) => {
       let aValue, bValue
 
@@ -125,8 +222,10 @@ export default function ProductPage({ params }) {
       }
     })
 
-    setFilteredProducts(filtered)
-  }, [products, searchTerm, priceRange, sortBy, sortOrder])
+    return filtered
+  }
+
+  const filteredProducts = getFilteredAndSortedProducts()
 
   // Product Actions
   const handleAddProduct = () => {
@@ -140,7 +239,6 @@ export default function ProductPage({ params }) {
   }
 
   const handleViewProduct = (product) => {
-    // Implement view functionality or navigate to product detail page
     toast.info(`Viewing ${product.ProductName}`)
   }
 
@@ -153,10 +251,8 @@ export default function ProductPage({ params }) {
     if (!selectedProduct) return
 
     setIsDeleting(true)
-    console.log(selectedProduct)
     try {
       const accessToken = localStorage.getItem('accessToken');
-      // Delete product from database
       const response = await axios.delete(`${api}/product/delete/${selectedProduct._id}`, {
         headers: {
           Authorization: accessToken ? `Bearer ${accessToken}` : undefined,
@@ -169,7 +265,11 @@ export default function ProductPage({ params }) {
           await deleteImageFromCloudinary(selectedProduct.Images)
         }
         toast.success('Product deleted successfully')
-        fetchProducts() // Refresh the list
+        
+        // Remove deleted product from current products
+        setProducts(prev => prev.filter(p => p._id !== selectedProduct._id))
+        setTotalProducts(prev => prev - 1)
+        
         setIsDeleteDialogOpen(false)
         setSelectedProduct(null)
       } else {
@@ -184,11 +284,15 @@ export default function ProductPage({ params }) {
   }
 
   const handleFormSuccess = () => {
-    fetchProducts() // Refresh the list
+    // Refresh the list by fetching from page 1
+    setProducts([])
+    setCurrentPage(1)
+    setHasMore(true)
+    fetchProducts(1, true)
     setSelectedProduct(null)
   }
 
-  // Calculate stats
+  // Calculate stats from all loaded products
   const averagePrice = products.length > 0
     ? products.reduce((sum, product) => sum + parseFloat(product.PricePerUnit), 0) / products.length
     : 0
@@ -266,7 +370,7 @@ export default function ProductPage({ params }) {
             </h1>
           </div>
           <p className="text-slate-600 text-lg">
-            Browse and manage your product catalog
+            Browse and manage your product catalog • Page {currentPage} of {totalPages} • Showing {filteredProducts.length} of {totalProducts} products
           </p>
         </div>
 
@@ -277,7 +381,7 @@ export default function ProductPage({ params }) {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-purple-100 text-sm font-medium">Total Products</p>
-                  <p className="text-3xl font-bold">{products.length}</p>
+                  <p className="text-3xl font-bold">{totalProducts}</p>
                 </div>
                 <div className="p-3 bg-purple-400/30 rounded-full">
                   <Package className="w-6 h-6" />
@@ -415,7 +519,7 @@ export default function ProductPage({ params }) {
         </div>
 
         {/* Products Display */}
-        {filteredProducts.length === 0 ? (
+        {filteredProducts.length === 0 && !loading ? (
           <div className="text-center py-12">
             <div className="p-4 bg-gradient-to-r from-purple-500 to-pink-600 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center">
               <Package className="w-10 h-10 text-white" />
@@ -438,22 +542,144 @@ export default function ProductPage({ params }) {
             )}
           </div>
         ) : (
-          <div className={`grid gap-6 ${viewMode === 'grid'
-            ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
-            : 'grid-cols-1'
-            }`}>
-            {filteredProducts.map((product, index) => (
-              <ProductCard
-                key={product._id}
-                product={product}
-                index={index}
-                viewMode={viewMode}
-                onEdit={handleEditProduct}
-                onDelete={handleDeleteProduct}
-                onView={handleViewProduct}
-              />
-            ))}
-          </div>
+          <>
+            <div className={`grid gap-6 ${viewMode === 'grid'
+              ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+              : 'grid-cols-1'
+              }`}>
+              {filteredProducts.map((product, index) => (
+                <div
+                  key={product._id}
+                  ref={index === filteredProducts.length - 1 ? lastProductElementRef : null}
+                >
+                  <ProductCard
+                    product={product}
+                    index={index}
+                    viewMode={viewMode}
+                    onEdit={handleEditProduct}
+                    onDelete={handleDeleteProduct}
+                    onView={handleViewProduct}
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* Loading More Indicator */}
+            {loadingMore && (
+              <div className="flex justify-center items-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-purple-600 mr-2" />
+                <span className="text-slate-600">Loading more products...</span>
+              </div>
+            )}
+
+            {/* End of Results Indicator */}
+            {!hasMore && products.length > 0 && (
+              <div className="text-center py-8">
+                <p className="text-slate-500">You've reached the end of the list</p>
+              </div>
+            )}
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-4 mt-8 py-6">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={goToPreviousPage}
+                  disabled={currentPage === 1 || loading}
+                  className="border-slate-200 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" />
+                  Previous
+                </Button>
+
+                {/* Page Numbers */}
+                <div className="flex items-center gap-2">
+                  {/* First page */}
+                  {currentPage > 3 && (
+                    <>
+                      <Button
+                        variant={currentPage === 1 ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => goToSpecificPage(1)}
+                        className={currentPage === 1 
+                          ? "bg-purple-600 hover:bg-purple-700 text-white" 
+                          : "border-slate-200 hover:bg-slate-50"
+                        }
+                      >
+                        1
+                      </Button>
+                      {currentPage > 4 && <span className="text-slate-400">...</span>}
+                    </>
+                  )}
+
+                  {/* Current page and surrounding pages */}
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum
+                    if (totalPages <= 5) {
+                      pageNum = i + 1
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i
+                    } else {
+                      pageNum = currentPage - 2 + i
+                    }
+
+                    if (pageNum < 1 || pageNum > totalPages) return null
+
+                    // Skip if we already showed page 1
+                    if (pageNum === 1 && currentPage > 3) return null
+
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={currentPage === pageNum ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => goToSpecificPage(pageNum)}
+                        disabled={loading}
+                        className={currentPage === pageNum 
+                          ? "bg-purple-600 hover:bg-purple-700 text-white" 
+                          : "border-slate-200 hover:bg-slate-50"
+                        }
+                      >
+                        {pageNum}
+                      </Button>
+                    )
+                  })}
+
+                  {/* Last page */}
+                  {currentPage < totalPages - 2 && totalPages > 5 && (
+                    <>
+                      {currentPage < totalPages - 3 && <span className="text-slate-400">...</span>}
+                      <Button
+                        variant={currentPage === totalPages ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => goToSpecificPage(totalPages)}
+                        className={currentPage === totalPages 
+                          ? "bg-purple-600 hover:bg-purple-700 text-white" 
+                          : "border-slate-200 hover:bg-slate-50"
+                        }
+                      >
+                        {totalPages}
+                      </Button>
+                    </>
+                  )}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={goToNextPage}
+                  disabled={currentPage === totalPages || loading}
+                  className="border-slate-200 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Next
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+            )}
+          </>
         )}
 
         {/* Modals */}
